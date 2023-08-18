@@ -26,18 +26,29 @@ sigmoid.d = function sigmoid_d(value) {
 class InputNeuron {
   activation = 0;
   isInput = true;
+  /** @type Array<{neuron: Neuron, weight: number}> */fwdConnections = [];
 }
 
 class Neuron {
   activation = 0;
   bias = 0;
   z = 0;
+  biasGradient = 0;
+  dCost_dOut = 0;
+  dOut_dZ = 0;
+  /** @type Array<{neuron: Neuron, weight: number}> */fwdConnections = [];
 
   constructor(/** @type Array<Neuron|InputNeuron> */previousLayer) {
-    /** @type Array<{neuron: Neuron, weight: number}> */this.inputs = previousLayer.map(neuron => {
+    /** @type Array<{neuron: Neuron, weight: number, weightGradient: number, dZ_dW: number}> */
+    this.inputs = previousLayer.map(neuron => {
       const weight = 1//neuron.isInput ? 1 : (Math.random() - 0.5) * 20;
-      return { neuron, weight };
+      neuron.fwdConnections.push({ neuron: this, weight });
+      return { neuron, weight, weightGradient: 0, dZ_dW: 0 };
     });
+  }
+
+  toString() {
+    return JSON.stringify((({fwdConnections, ...rest}) => rest)(this));
   }
 
   updateWeights(/** @type Array<number> */weights) {
@@ -110,7 +121,7 @@ class Network {
       return maxActive;
     });
 
-    return result.label;
+    return result;
   }
 
   cost(/** @type Array<number> */expected, /** @optional @type Array<number> */input) {
@@ -125,31 +136,63 @@ class Network {
 
   gradient(
     /** @type Array<number> */expected,
-    /** @optional @type Array<Array<{biasDerivitive: number, weightDerivitives: Array<number>}>> */runningTally,
     /** @optional @type Array<number> */input,
   ) {
-    const resultsPerLayer = runningTally || Array(this.hiddenLayers.length + 1).fill(null).map(_k => []);
-    // figure out how to work in the sum for running tally (pushing the new results on the end is wrong)
-    resultsPerLayer.push(this.outputLayer.map((node, i) => {
-      const dAdZ = activationFnPrime(node.z);
-      const dCdA = 2 * (node.activation - expected[i]);
-      console.log(dAdZ, dCdA);
-      const biasDerivitive = dAdZ * dCdA;
-      const weightDerivitives = node.inputs.map((previousNode, i) => {
-        const dZdW = previousNode.neuron.activation;
-        console.log(dZdW);
-        console.log(activationFnPrime(previousNode.neuron.z) * previousNode.neuron.inputs[0].neuron.activation)
-        return dZdW * biasDerivitive;
-      });
-      console.log({biasDerivitive, weightDerivitives})
-      return { biasDerivitive, weightDerivitives };
-    }));
+    if (input) {
+      this.evaluate(input);
+    }
+    this.outputLayer.forEach((node, i) => {
+      node.dCost_dOut = 2 * (node.activation - expected[i]);
+      node.dOut_dZ = activationFnPrime(node.z);
+      node.biasGradient = node.dCost_dOut * node.dOut_dZ;
 
-    return resultsPerLayer;
+      node.inputs.forEach(input => {
+        input.weightGradient = input.neuron.activation * node.biasGradient;
+      });
+    });
+
+    for (let layerI = this.hiddenLayers.length-1; layerI >= 0; layerI--) {
+      const layer = this.hiddenLayers[layerI];
+      layer.forEach(node => {
+        // still need to generalize to more layers/neurons
+        node.dCost_dOut = node.fwdConnections[0].weight * node.fwdConnections[0].neuron.dOut_dZ;
+        node.dOut_dZ = activationFnPrime(node.z);
+        node.biasGradient = node.dCost_dOut * node.dOut_dZ;
+
+        node.inputs.forEach(input => {
+          input.weightGradient = input.neuron.activation * node.biasGradient * node.fwdConnections[0].neuron.dCost_dOut;
+        });
+      });
+    }
+  }
+
+  updateNetwork() {
+    this.hiddenLayers.forEach(layer => {
+      layer.forEach(updateNeuron);
+    });
+    this.outputLayer.forEach(updateNeuron)
+
+    function updateNeuron(/** @type Neuron */neuron) {
+      neuron.bias -= neuron.biasGradient;
+      neuron.inputs.forEach(input => input.weight -= input.weightGradient);
+    }
   }
 }
 
 // const n = new Network(28*28, 2, 16, [0,1,2,3,4,5,6,7,8,9]);
 const n = new Network(2, 1, 2, ['o']);
-n.evaluate([-2, -1]);
-console.log(n.gradient([1]));
+for (i = 0; i < 500; i++) {
+  n.gradient([1], [-2, -1]);
+  n.updateNetwork();
+  n.gradient([0], [25, 6]);
+  n.updateNetwork();
+  n.gradient([0], [17, 4]);
+  n.updateNetwork();
+  n.gradient([1], [-15, -6]);
+  n.updateNetwork();
+}
+console.log(n.evaluate([5, 2]))
+
+// console.log(
+//   JSON.stringify(n, (k, v) => k === 'fwdConnections' ? undefined : v, 2)
+// );
