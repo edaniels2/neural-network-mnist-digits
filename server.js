@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const mnist = require('./mnist');
 
 const PORT = 1234;
 const BASE_PATH = process.cwd();
@@ -11,6 +12,25 @@ const MIME_TYPES = {
 
 const server = http.createServer(/* options,  */function (req, res) {
   const url = req.url === '/' ? 'index.html' : req.url;
+
+  let match = url.match(/\/img\/(\d{1,4})/);
+  if (match) {
+    const data = mnist.getImage(match[1]);
+    res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+    res.write(data);
+    res.end();
+    return;
+  }
+
+  match = url.match(/\/label\/(\d{1,4})/);
+  if (match) {
+    const data = mnist.getLabel(match[1]);
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.write(data);
+    res.end();
+    return;
+  }
+
   if (url === '/check') {
     res.statusCode = 200;
     res.end(JSON.stringify({success: true}));
