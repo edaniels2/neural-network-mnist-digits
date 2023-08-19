@@ -154,14 +154,17 @@ class Network {
     for (let layerI = this.hiddenLayers.length-1; layerI >= 0; layerI--) {
       const layer = this.hiddenLayers[layerI];
       layer.forEach(node => {
-        // still need to generalize to more layers/neurons
-        node.dCost_dOut = node.fwdConnections[0].weight * node.fwdConnections[0].neuron.dOut_dZ;
         node.dOut_dZ = activationFnPrime(node.z);
-        node.biasGradient = node.dCost_dOut * node.dOut_dZ;
-
-        node.inputs.forEach(input => {
-          input.weightGradient = input.neuron.activation * node.biasGradient * node.fwdConnections[0].neuron.dCost_dOut;
-        });
+        let totalBiasGradient = 0;
+        node.fwdConnections.forEach(fwdConnection => {
+          node.dCost_dOut = fwdConnection.weight * fwdConnection.neuron.dOut_dZ;
+          const partialBiasGradient = node.dCost_dOut * node.dOut_dZ;
+          totalBiasGradient += partialBiasGradient;
+          node.inputs.forEach(input => {
+            input.weightGradient = input.neuron.activation * partialBiasGradient * fwdConnection.neuron.dCost_dOut;
+          });
+        })
+        node.biasGradient = totalBiasGradient;
       });
     }
   }
@@ -180,18 +183,19 @@ class Network {
 }
 
 // const n = new Network(28*28, 2, 16, [0,1,2,3,4,5,6,7,8,9]);
-const n = new Network(2, 1, 2, ['o']);
+const n = new Network(2, 2, 4, ['f', 'm']);
 for (i = 0; i < 500; i++) {
-  n.gradient([1], [-2, -1]);
+  n.gradient([1, 0], [-2, -1]);
   n.updateNetwork();
-  n.gradient([0], [25, 6]);
+  n.gradient([0, 1], [25, 6]);
   n.updateNetwork();
-  n.gradient([0], [17, 4]);
+  n.gradient([0, 1], [17, 4]);
   n.updateNetwork();
-  n.gradient([1], [-15, -6]);
+  n.gradient([1, 0], [-15, -6]);
   n.updateNetwork();
 }
-console.log(n.evaluate([5, 2]))
+const result = n.evaluate([-7, -3]);
+console.log(result.label, result.activation)
 
 // console.log(
 //   JSON.stringify(n, (k, v) => k === 'fwdConnections' ? undefined : v, 2)
