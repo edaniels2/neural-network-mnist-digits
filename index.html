@@ -6,31 +6,66 @@
   <title>Document</title>
   <style>
     canvas {
-      width: 128px;
+      width: 224px;
+      border: 1px solid black;
     }
   </style>
   <script>
-    function getImage(i) {
-      const canvas = document.querySelector('canvas');
-      fetch(`/img/${i}`).then(response => response.arrayBuffer().then(data => {
-        const ctx = canvas.getContext('2d');
-        const bytes = new Uint8ClampedArray(data);
-        const imageBuffer = new Uint8ClampedArray(bytes.length * 4);
-        for (let i = 0; i < bytes.length; i++) {
-          const offset = i*4;
-          imageBuffer[offset + 3] = bytes[i];
-        }
-        ctx.putImageData(new ImageData(imageBuffer, 28), 0, 0);
-      }));
+    /** @type HTMLCanvasElement */var canvas;
+    /** @type CanvasRenderingContext2D */var ctx;
 
-      fetch(`/label/${i}`).then(response => response.text()).then(value => {
-        document.querySelector('div.label').innerText = value;
-      });
+    function initCanvas() {
+      canvas = document.querySelector('canvas');
+      ctx = canvas.getContext('2d');
+      var { top, left } = canvas.getBoundingClientRect();
+      canvas.onmousedown = startDraw;
+      canvas.onmouseup = endDraw;
+    
+      function startDraw(event) {
+        var { clientX, clientY } = event;
+        ctx.moveTo((clientX - top) / 8, (clientY - left) / 8);
+        ctx.beginPath();
+        canvas.onmousemove = drawSegment;
+      }
+    
+      function drawSegment(event) {
+        var { clientX, clientY, buttons } = event;
+        if (!(buttons & 1)) {
+          return;
+        }
+        ctx.lineTo((clientX - top) / 8, (clientY - left) / 8);
+        ctx.stroke();
+      }
+    
+      function endDraw(event) {
+        var { clientX, clientY } = event;
+        ctx.lineTo((clientX - top) / 8, (clientY - left) / 8);
+        ctx.stroke();
+        canvas.onmousemove = null;
+      }
+    }
+
+    function submit() {
+      const imageData = ctx.getImageData(0, 0, 28, 28);
+      // get the alpha channel
+      const bwImage = new Uint8Array(imageData.data.length / 4);
+      for (let i = 0; i < imageData.data.length / 4; i++) {
+        bwImage[i] = imageData.data[i * 4 + 3];
+      }
+      fetch('/evaluate', { method: 'POST', body: bwImage })
+        .then(res => res.json())
+        .then(json => console.log(json.result.label, json));
+    }
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, 28, 28);
     }
   </script>
 </head>
-<body onload="getImage(0)">
+<body onload="initCanvas()">
   <canvas height="28" width="28"></canvas>
   <div class="label"></div>
+  <button onclick="submit()">submit</button>
+  <button onclick="clearCanvas()">clear</button>
 </body>
 </html>
