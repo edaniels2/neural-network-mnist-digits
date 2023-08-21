@@ -4,14 +4,15 @@ const readline = require('readline');
 const sqlite3 = require('sqlite3');
 
 const ROUNDS = 50;
-const BATCH_SIZE = 1000;
+const BATCH_SIZE = 60000; // this should be a factor of 60k to use all the data
 const EPOCHS = Math.floor(60000 / BATCH_SIZE);
-const db = new sqlite3.cached.Database('./training_params.sqlite');
+const LEARN_RATE = 0.0001;
+
 const n = new Network(28*28, 2, 16, [0,1,2,3,4,5,6,7,8,9]);
-loadParams().then(train);
+n.loadParams().then(train);
+
 
 function train() {
-  let count = 0;
   for (let round = 0; round < ROUNDS; round++) {
     for (let j = 0; j < EPOCHS; j++) {
       for (let i = 0; i < BATCH_SIZE; i++) {
@@ -21,13 +22,8 @@ function train() {
         const correctOutput = Array(10).fill(0);
         correctOutput[label] = 1;
         n.gradient(correctOutput, data);
-        count++;
       }
-      const cost = n.currentTotalCost / count;
-      console.log(cost);
-      n.updateNetwork(cost * 0.01);
-      n.currentTotalCost = 0;
-      count = 0;
+      n.updateNetwork(LEARN_RATE);
     }
   }
 
@@ -50,16 +46,18 @@ function train() {
     if (store.toLowerCase() === 'y') {
       storeNetwork();
     }
-    db.close();
     rl.close();
   });
 
 
   function storeNetwork() {
+    const db = new sqlite3.Database('./training_params.sqlite');
     n.hiddenLayers.forEach((layer, layerIndex) => {
       layer.forEach(storeLayer(layerIndex));
     });
     n.outputLayer.forEach(storeLayer(n.hiddenLayers.length));
+
+    db.close();
 
     // this is pretty ineffecient but I don't know if there's another way to do it using the ON CONFLICT clause
     // doesn't really matter though, training takes ages already

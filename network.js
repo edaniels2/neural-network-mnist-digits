@@ -1,26 +1,38 @@
 const ACTIVATION_FN = sigmoid;
 const sqlite3 = require('sqlite3');
 
-function activationFn(value) {
+function activationFn(/** @type number */value) {
   return ACTIVATION_FN(value);
 }
 
-function activationFnDerivitive(value) {
+function activationFnDerivitive(/** @type number */value) {
   return ACTIVATION_FN.d(value);
 }
 
+/**
+ * Rectified Linear Units - sounds complicated but it's just f(x) = x for x>1 & f(x) = 0 otherwise
+ */
 // haven't tested this one but it's supposed to be more effective for training
-function ReLU(value) {
+function ReLU(/** @type number */value) {
   return Math.max(0, value);
 }
-ReLU.d = function ReLU_d(value) {
+/**
+ * ReLU derivitive
+ */
+ReLU.d = function ReLU_d(/** @type number */value) {
   return value > 0 ? 1 : 0;
 };
 
-function sigmoid(value) {
+/**
+ * Compress any value to the range 0 - 1
+ */
+function sigmoid(/** @type number */value) {
   return 1 / (1 + Math.pow(Math.E, -value));
 }
-sigmoid.d = function sigmoid_d(value) {
+/**
+ * Sigmoid derivitive
+ */
+sigmoid.d = function sigmoid_d(/** @type number */value) {
   const f = sigmoid(value);
   return f * (1 - f);
 }
@@ -85,6 +97,7 @@ class OutputNeuron extends Neuron {
 }
 
 class Network {
+  sampleCount = 0;
   currentTotalCost = 0;
 
   constructor(
@@ -107,7 +120,7 @@ class Network {
 
   loadParams() {
     /** @type sqlite3.Database */
-    const db = new sqlite3.cached.Database('./training_params.sqlite');
+    const db = new sqlite3.Database('./training_params.sqlite');
     // sqlite3 hijacks the `this` binding in the callback
     const self = this;
     return Promise.all([
@@ -150,11 +163,18 @@ class Network {
       }
       return maxActive;
     });
-    this.currentTotalCost += expected ? this.cost(expected) : null;
+    if (expected) {
+      // update evaluated cost
+      this.currentTotalCost += this.cost(expected);
+      this.sampleCount++;
+    }
 
     return { result: {label: result.label, activation: result.activation}, fullOutput: this.outputLayer.map(n => n.activation) };
   }
 
+  /**
+   * Cost of a single sample
+   */
   cost(/** @type Array<number> */expected, /** @optional @type Array<number> */input) {
     if (input) {
       this.evaluate(input);
@@ -199,17 +219,22 @@ class Network {
     }
   }
 
-  updateNetwork(cost = 1) {
+  updateNetwork(learnRate = 1) {
+    const cost = this.currentTotalCost / this.sampleCount;
     this.hiddenLayers.forEach(layer => {
       layer.forEach(updateNeuron);
     });
     this.outputLayer.forEach(updateNeuron);
 
+    console.log('cost:', cost);
+    this.currentTotalCost = 0;
+    this.sampleCount = 0;
+
     function updateNeuron(/** @type Neuron */neuron) {
-      neuron.bias -= cost * neuron.biasGradient;
+      neuron.bias -= cost * learnRate * neuron.biasGradient;
       neuron.biasGradient = 0;
       neuron.inputs.forEach(input => {
-        input.weight -= cost * input.weightGradient;
+        input.weight -= cost * learnRate * input.weightGradient;
         input.weightGradient = 0;
       });
     }
