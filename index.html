@@ -11,25 +11,25 @@
     }
   </style>
   <script>
-    /** @type HTMLCanvasElement */var canvas;
-    /** @type CanvasRenderingContext2D */var ctx;
+    /** @type HTMLCanvasElement */let canvas;
+    /** @type CanvasRenderingContext2D */let ctx;
 
     function initCanvas() {
       canvas = document.querySelector('canvas');
       ctx = canvas.getContext('2d');
-      var { top, left } = canvas.getBoundingClientRect();
+      const { top, left } = canvas.getBoundingClientRect();
       canvas.onmousedown = startDraw;
       canvas.onmouseup = endDraw;
     
       function startDraw(event) {
-        var { clientX, clientY } = event;
+        const { clientX, clientY } = event;
         ctx.moveTo((clientX - top) / 8, (clientY - left) / 8);
         ctx.beginPath();
         canvas.onmousemove = drawSegment;
       }
     
       function drawSegment(event) {
-        var { clientX, clientY, buttons } = event;
+        const { clientX, clientY, buttons } = event;
         if (!(buttons & 1)) {
           return;
         }
@@ -38,10 +38,11 @@
       }
     
       function endDraw(event) {
-        var { clientX, clientY } = event;
+        const { clientX, clientY } = event;
         ctx.lineTo((clientX - top) / 8, (clientY - left) / 8);
         ctx.stroke();
         canvas.onmousemove = null;
+        submit();
       }
     }
 
@@ -54,18 +55,27 @@
       }
       fetch('/evaluate', { method: 'POST', body: bwImage })
         .then(res => res.json())
-        .then(json => console.log(json.result.label, json));
+        .then(json => {
+          const outputDiv = document.querySelector('span.label');
+          outputDiv.textContent = json.result.label;
+          console.log(json.result.label, json);
+        });
     }
 
     function clearCanvas() {
+      const outputDiv = document.querySelector('span.label');
+      outputDiv.textContent = '';
       ctx.clearRect(0, 0, 28, 28);
     }
   </script>
 </head>
 <body onload="initCanvas()">
-  <canvas height="28" width="28"></canvas>
-  <div class="label"></div>
-  <button onclick="submit()">submit</button>
-  <button onclick="clearCanvas()">clear</button>
+  <div>
+    <canvas height="28" width="28"></canvas>
+    <span class="label"></span>
+  </div>
+  <div>
+    <button onclick="clearCanvas()">clear</button>
+  </div>
 </body>
 </html>
