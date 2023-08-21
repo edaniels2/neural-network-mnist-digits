@@ -27,16 +27,18 @@ function train() {
     }
   }
 
-  console.log('Random samples:');
-  for (let i = 0; i < 10; i++) {
-    const sample = Math.round(Math.random() * 60000);
-    const output = n.evaluate(mnist.getTrainingImage(sample));
-    console.log('result:', output.result.label);
-    console.log('confidence:', output.result.activation);
-    console.log('actual: ', mnist.getTrainingLabel(sample));
-    // console.log(n.outputLayer.map(node => ({[node.label]: node.activation})));
-    console.log();
+  let correctCount = 0;
+  const testCount = 10000;
+  for (let i = 0; i < testCount; i++) {
+    const data = mnist.getTestImage(i);
+    const label = mnist.getTestLabel(i);
+    const output = n.evaluate(data);
+    if (Number(output.result.label) === label) {
+      correctCount++;
+    }
   }
+  console.log('Evaluated %d samples, %d correct', testCount, correctCount);
+  console.log((correctCount / testCount * 100).toFixed(2), '%');
 
   const rl = readline.createInterface({
       input: process.stdin,

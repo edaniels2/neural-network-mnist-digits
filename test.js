@@ -11,9 +11,7 @@ function test() {
   for (let i = 0; i < TEST_COUNT; i++) {
     const data = mnist.getTestImage(i);
     const label = mnist.getTestLabel(i);
-    const expected = Array(n.outputLayer.length).fill(0);
-    expected[label] = 1;
-    const output = n.evaluate(data, expected);
+    const output = n.evaluate(data);
     if (Number(output.result.label) === label) {
       correctCount++;
     }
