@@ -1,9 +1,10 @@
 const { Network } = require('./network');
 const mnist = require('./mnist');
+const p = require('./meta-parameters');
 
 const TEST_COUNT = 10000;
 
-const n = new Network(28*28, 2, 16, [0,1,2,3,4,5,6,7,8,9]);
+const n = new Network(p.INPUT_SIZE, p.NUM_LAYERS, p.NODES_PER_LAYER, p.OUTPUTS);
 n.loadParams().then(test);
 
 function test() {

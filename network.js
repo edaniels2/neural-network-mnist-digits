@@ -1,4 +1,5 @@
 const ACTIVATION_FN = sigmoid;
+const p = require('./meta-parameters');
 const sqlite3 = require('sqlite3');
 
 function activationFn(/** @type number */value) {
@@ -219,7 +220,7 @@ class Network {
     }
   }
 
-  updateNetwork(learnRate = 1) {
+  updateNetwork() {
     const cost = this.currentTotalCost / this.sampleCount;
     this.hiddenLayers.forEach(layer => {
       layer.forEach(updateNeuron);
@@ -231,10 +232,10 @@ class Network {
     this.sampleCount = 0;
 
     function updateNeuron(/** @type Neuron */neuron) {
-      neuron.bias -= cost * learnRate * neuron.biasGradient;
+      neuron.bias -= cost * p.LEARN_RATE * neuron.biasGradient;
       neuron.biasGradient = 0;
       neuron.inputs.forEach(input => {
-        input.weight -= cost * learnRate * input.weightGradient;
+        input.weight -= cost * p.LEARN_RATE * input.weightGradient;
         input.weightGradient = 0;
       });
     }

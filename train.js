@@ -1,29 +1,26 @@
 const { Network } = require('./network');
 const mnist = require('./mnist');
+const p = require('./meta-parameters');
 const readline = require('readline');
 const sqlite3 = require('sqlite3');
 
-const ROUNDS = 50;
-const BATCH_SIZE = 60000; // this should be a factor of 60k to use all the data
-const EPOCHS = Math.floor(60000 / BATCH_SIZE);
-const LEARN_RATE = 0.0001;
+const EPOCHS = Math.floor(60000 / p.TRAIN_BATCH_SIZE);
+const n = new Network(p.INPUT_SIZE, p.NUM_LAYERS, p.NODES_PER_LAYER, p.OUTPUTS);
 
-const n = new Network(28*28, 2, 16, [0,1,2,3,4,5,6,7,8,9]);
 n.loadParams().then(train);
 
-
 function train() {
-  for (let round = 0; round < ROUNDS; round++) {
+  for (let round = 0; round < p.TRAIN_ROUNDS; round++) {
     for (let j = 0; j < EPOCHS; j++) {
-      for (let i = 0; i < BATCH_SIZE; i++) {
-        const s = i + BATCH_SIZE * j;
+      for (let i = 0; i < p.TRAIN_BATCH_SIZE; i++) {
+        const s = i + p.TRAIN_BATCH_SIZE * j;
         const data = mnist.getTrainingImage(s);
         const label = mnist.getTrainingLabel(s);
         const correctOutput = Array(10).fill(0);
         correctOutput[label] = 1;
         n.gradient(correctOutput, data);
       }
-      n.updateNetwork(LEARN_RATE);
+      n.updateNetwork();
     }
   }
 

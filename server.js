@@ -1,7 +1,8 @@
-const http = require('http');
 const fs = require('fs');
-const path = require('path');
+const http = require('http');
 const mnist = require('./mnist');
+const p = require('./meta-parameters');
+const path = require('path');
 const { Network } = require('./network');
 
 const PORT = 1234;
@@ -11,7 +12,7 @@ const MIME_TYPES = {
   js: 'application/javascript; charset=UTF-8',
 };
 
-const n = new Network(28*28, 2, 16, [0,1,2,3,4,5,6,7,8,9]);
+const n = new Network(p.INPUT_SIZE, p.NUM_LAYERS, p.NODES_PER_LAYER, p.OUTPUTS);
 n.loadParams().then(startServer);
 
 function startServer() {
