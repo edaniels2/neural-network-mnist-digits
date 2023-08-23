@@ -16,14 +16,14 @@
 
     function initCanvas() {
       canvas = document.querySelector('canvas');
-      ctx = canvas.getContext('2d');
+      ctx = canvas.getContext('2d', { willReadFrequently: true });
       const { top, left } = canvas.getBoundingClientRect();
       canvas.onmousedown = startDraw;
       canvas.onmouseup = endDraw;
     
       function startDraw(event) {
         const { clientX, clientY } = event;
-        ctx.moveTo((clientX - top) / 8, (clientY - left) / 8);
+        ctx.moveTo((clientX - left) / 8, (clientY - top) / 8);
         ctx.beginPath();
         canvas.onmousemove = drawSegment;
       }
@@ -33,20 +33,21 @@
         if (!(buttons & 1)) {
           return;
         }
-        ctx.lineTo((clientX - top) / 8, (clientY - left) / 8);
+        ctx.lineTo((clientX - left) / 8, (clientY - top) / 8);
         ctx.stroke();
       }
     
       function endDraw(event) {
         const { clientX, clientY } = event;
-        ctx.lineTo((clientX - top) / 8, (clientY - left) / 8);
+        ctx.lineTo((clientX - left) / 8, (clientY - top) / 8);
         ctx.stroke();
         canvas.onmousemove = null;
-        submit();
+        // submit();
       }
     }
 
-    function submit() {
+    async function submit() {
+      // await processImage();
       const imageData = ctx.getImageData(0, 0, 28, 28);
       // get the alpha channel
       const bwImage = new Uint8Array(imageData.data.length / 4);
@@ -62,13 +63,81 @@
         });
     }
 
+    function processImage() {
+      const imageData = ctx.getImageData(0, 0, 28, 28);
+      // get the alpha channel
+      const bwImage = new Uint8Array(imageData.data.length / 4);
+      for (let i = 0; i < imageData.data.length / 4; i++) {
+        bwImage[i] = imageData.data[i * 4 + 3];
+      }
+
+      // find image center of mass & outer bounds
+      let count = 0;
+      let x = 0;
+      let y = 0;
+      let max = { x: 0, y: 0};
+      let min = { x: 28, y: 28};
+      for (let iy = 0; iy < 28; iy++) {
+        for (let ix = 0; ix < 28; ix++) {
+          const offset = 28 * iy + ix;
+          if (bwImage[offset] > 51) { // 20%
+            max.x = Math.max(max.x, ix);
+            max.y = Math.max(max.y, iy);
+            min.x = Math.min(min.x, ix);
+            min.y = Math.min(min.y, iy);
+            x += ix;
+            y += iy;
+            count++;
+            bwImage[offset] = 255;
+            imageData.data[offset * 4 + 3] = 255;
+          } else {
+            bwImage[offset] = 0;
+            imageData.data[offset * 4 + 3] = 0;
+          }
+        }
+      }
+
+      //scale to 20x20 bounding box
+      // const xSize = max.x - min.x;
+      // const ySize = max.y - min.y;
+      // const scale = 20 / Math.max(xSize, ySize);
+      // console.log(xSize, ySize)
+      // console.log(scale)
+      // so I have a scaling factor but i'm not sure about a good way to apply it
+
+      // move to center
+      ctx.clearRect(0, 0, 28, 28);
+      ctx.putImageData(imageData, 14 - x / count, 14 - y / count);
+
+      return new Promise(resolve => {
+        setTimeout(resolve, 10);
+      });
+    }
+
     function clearCanvas() {
       const outputDiv = document.querySelector('span.label');
       outputDiv.textContent = '';
       ctx.clearRect(0, 0, 28, 28);
     }
+
+    function viewImage(i) {
+      initCanvas();
+      fetch('/img/'+i).then(response => {
+        response.arrayBuffer().then(buffer => {
+          const imageData = new ImageData(28, 28);
+          const bytes = new Uint8ClampedArray(buffer);
+          for (let i = 0; i < bytes.length; i++) {
+            const offset = i * 4 + 3;
+            imageData.data[offset] = bytes[i];
+          }
+          console.log(imageData)
+          ctx.putImageData(imageData, 0, 0);
+        });
+      });
+    }
   </script>
 </head>
+<!-- <body onload="viewImage()"> -->
 <body onload="initCanvas()">
   <div>
     <canvas height="28" width="28"></canvas>
@@ -76,6 +145,8 @@
   </div>
   <div>
     <button onclick="clearCanvas()">clear</button>
+    <button onclick="processImage()">normalize image</button>
+    <button onclick="submit()">submit</button>
   </div>
 </body>
 </html>
