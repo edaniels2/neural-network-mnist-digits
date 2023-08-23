@@ -12,6 +12,7 @@ const MIME_TYPES = {
   js: 'application/javascript; charset=UTF-8',
 };
 
+
 const n = new Network(p.INPUT_SIZE, p.NUM_LAYERS, p.NODES_PER_LAYER, p.OUTPUTS);
 n.loadParams().then(startServer);
 
@@ -21,7 +22,9 @@ function startServer() {
 
     let match = url.match(/\/img\/(\d{1,4})/);
     if (match) {
+      mnist.open();
       const data = mnist.getTrainingImage(match[1]);
+      mnist.close();
       res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
       res.write(data);
       res.end();
@@ -30,7 +33,9 @@ function startServer() {
 
     match = url.match(/\/label\/(\d{1,4})/);
     if (match) {
+      mnist.open();
       const data = mnist.getTrainingLabel(match[1]);
+      mnist.close();
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.write(String(data));
       res.end();
@@ -39,8 +44,10 @@ function startServer() {
 
     match = url.match(/\/test\/(\d{1,4})/);
     if (match) {
+      mnist.open();
       const data = mnist.getTestImage(match[1]);
       const label = mnist.getTestLabel(match[1]);
+      mnist.close();
       const output = n.evaluate(data);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.write(JSON.stringify({ output, actual: label }));

@@ -4,36 +4,50 @@ const imageSize = 28 * 28;
 const imageHeaderOffset = 16;
 const labelHeaderOffset = 8;
 
-function getTrainingImage(/** @type number */i) {
-  const trainingImagesFile = fs.openSync('./mnist_dataset/train-images-idx3-ubyte');
-  const readBuffer = new Uint8Array(imageSize);
-  fs.readSync(trainingImagesFile, readBuffer, 0, imageSize, imageHeaderOffset + i * imageSize);
+/** @type number */let trainingImagesFile;
+/** @type number */let trainingLabelsFile;
+/** @type number */let testImagesFile;
+/** @type number */let testLabelsFile;
+const readBuffer = new Uint8Array(imageSize);
+
+function open() {
+  trainingImagesFile = fs.openSync('./mnist_dataset/train-images-idx3-ubyte');
+  trainingLabelsFile = fs.openSync('./mnist_dataset/train-labels-idx1-ubyte');
+  testImagesFile = fs.openSync('./mnist_dataset/t10k-images-idx3-ubyte');
+  testLabelsFile = fs.openSync('./mnist_dataset/t10k-labels-idx1-ubyte');
+}
+
+function close() {
   fs.close(trainingImagesFile);
-  return readBuffer;
+  fs.close(trainingLabelsFile);
+  fs.close(testImagesFile);
+  fs.close(testLabelsFile);
+}
+
+function clone(/** @type Uint8Array */src)  {
+  var dst = new ArrayBuffer(src.length);
+  new Uint8Array(dst).set(new Uint8Array(src));
+  return dst;
+}
+
+function getTrainingImage(/** @type number */i) {
+  fs.readSync(trainingImagesFile, readBuffer, 0, imageSize, imageHeaderOffset + i * imageSize);
+  return new Uint8Array(readBuffer);
 }
 
 function getTrainingLabel(/** @type number */i) {
-  const trainingLabelsFile = fs.openSync('./mnist_dataset/train-labels-idx1-ubyte');
-  const readBuffer = new Uint8Array(1);
   fs.readSync(trainingLabelsFile, readBuffer, 0, 1, labelHeaderOffset + Number(i));
-  fs.close(trainingLabelsFile);
   return readBuffer.at(0);
 }
 
 function getTestImage(/** @type number */i) {
-  const trainingImagesFile = fs.openSync('./mnist_dataset/t10k-images-idx3-ubyte');
-  const readBuffer = new Uint8Array(imageSize);
-  fs.readSync(trainingImagesFile, readBuffer, 0, imageSize, imageHeaderOffset + i * imageSize);
-  fs.close(trainingImagesFile);
-  return readBuffer;
+  fs.readSync(testImagesFile, readBuffer, 0, imageSize, imageHeaderOffset + i * imageSize);
+  return new Uint8Array(readBuffer);
 }
 
 function getTestLabel(/** @type number */i) {
-  const trainingLabelsFile = fs.openSync('./mnist_dataset/t10k-labels-idx1-ubyte');
-  const readBuffer = new Uint8Array(1);
-  fs.readSync(trainingLabelsFile, readBuffer, 0, 1, labelHeaderOffset + Number(i));
-  fs.close(trainingLabelsFile);
+  fs.readSync(testLabelsFile, readBuffer, 0, 1, labelHeaderOffset + Number(i));
   return readBuffer.at(0);
 }
 
-module.exports = { getTrainingImage, getTrainingLabel, getTestImage, getTestLabel };
+module.exports = { getTrainingImage, getTrainingLabel, getTestImage, getTestLabel, open, close };

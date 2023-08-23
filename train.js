@@ -7,7 +7,11 @@ const sqlite3 = require('sqlite3');
 const EPOCHS = Math.floor(60000 / p.TRAIN_BATCH_SIZE);
 const n = new Network(p.INPUT_SIZE, p.NUM_LAYERS, p.NODES_PER_LAYER, p.OUTPUTS);
 
-n.loadParams().then(train);
+n.loadParams().then(() => {
+  mnist.open();
+  train();
+  mnist.close();
+});
 
 function train() {
   for (let round = 0; round < p.TRAIN_ROUNDS; round++) {

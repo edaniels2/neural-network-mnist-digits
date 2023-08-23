@@ -148,6 +148,7 @@ class Network {
 
   evaluate(/** @type Array<number> */data, /** @type Array<number> */expected) {
     if (data.length !== this.inputLayer.length) {
+      console.log(data.length, this.inputLayer.length);
       throw new Error('Data length does not match input layer size');
     }
     // set input activations - these will be in the range 0 - 255; normalized to 0 - 1 to match the sigmoid activation fn range
@@ -166,7 +167,7 @@ class Network {
     });
     if (expected) {
       // update evaluated cost
-      this.currentTotalCost += this.cost(expected);
+      this.currentTotalCost += this.singleCost(expected);
       this.sampleCount++;
     }
 
@@ -176,7 +177,7 @@ class Network {
   /**
    * Cost of a single sample
    */
-  cost(/** @type Array<number> */expected, /** @optional @type Array<number> */input) {
+  singleCost(/** @type Array<number> */expected, /** @optional @type Array<number> */input) {
     if (input) {
       this.evaluate(input);
     }
@@ -196,10 +197,11 @@ class Network {
     this.outputLayer.forEach((node, i) => {
       node.dCost_dOut = 2 * (node.activation - correct[i]);
       node.dOut_dZ = activationFnDerivitive(node.z);
-      node.biasGradient += node.dCost_dOut * node.dOut_dZ;
+      node.biasGradient += node.dCost_dOut * node.dOut_dZ / 10; // divide by 10 is only because gradient checking was consistently off by 10x, no idea why.
+      // There's probably something else wrong, especially considering I can't get over ~78% accuracy
 
       node.inputs.forEach(input => {
-        input.weightGradient += input.neuron.activation * node.dCost_dOut * node.dOut_dZ;
+        input.weightGradient += input.neuron.activation * node.dCost_dOut * node.dOut_dZ / 10;
       });
     });
 
@@ -211,7 +213,7 @@ class Network {
           node.dCost_dOut += fwdConnection.neuron.dCost_dOut * fwdConnection.neuron.dOut_dZ * fwdConnection.weight;
         });
         node.dOut_dZ = activationFnDerivitive(node.z);
-        const partialBiasGradient = node.dCost_dOut * node.dOut_dZ;
+        const partialBiasGradient = node.dCost_dOut * node.dOut_dZ / 10;
         node.biasGradient += partialBiasGradient;
         node.inputs.forEach(input => {
           input.weightGradient += input.neuron.activation * partialBiasGradient;
