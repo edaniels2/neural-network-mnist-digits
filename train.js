@@ -7,6 +7,7 @@ const sqlite3 = require('sqlite3');
 const EPOCHS = Math.floor(60000 / p.TRAIN_BATCH_SIZE);
 const n = new Network(p.INPUT_SIZE, p.HIDDEN_LAYERS, p.OUTPUTS);
 
+// trying to resume training on existing parameters always seems to increase the error rate, probably a bug somewhere
 // n.loadParams().then(() => {
   mnist.open();
   train();

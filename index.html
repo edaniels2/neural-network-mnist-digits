@@ -9,6 +9,24 @@
       width: 224px;
       border: 1px solid black;
     }
+
+    div.canvas-container {
+      display: flex;
+      margin: 12px;
+    }
+
+    div.col {
+      flex-direction: column;
+    }
+
+    span.guess {
+      font-size: xx-large;
+    }
+
+    div.info {
+      margin-top: 24px;
+      width: 400px;
+    }
   </style>
   <script>
     /** @type HTMLCanvasElement */let canvas;
@@ -57,7 +75,7 @@
       fetch('/evaluate', { method: 'POST', body: bwImage })
         .then(res => res.json())
         .then(json => {
-          const outputDiv = document.querySelector('span.label');
+          const outputDiv = document.querySelector('span.guess');
           outputDiv.textContent = json.result.label;
           console.log(json.result.label, json);
         });
@@ -80,7 +98,7 @@
       for (let iy = 0; iy < 28; iy++) {
         for (let ix = 0; ix < 28; ix++) {
           const offset = 28 * iy + ix;
-          if (bwImage[offset] > 51) { // 20%
+          if (bwImage[offset] > 85) { // 33.3̅%
             max.x = Math.max(max.x, ix);
             max.y = Math.max(max.y, iy);
             min.x = Math.min(min.x, ix);
@@ -115,7 +133,7 @@
     }
 
     function clearCanvas() {
-      const outputDiv = document.querySelector('span.label');
+      const outputDiv = document.querySelector('span.guess');
       outputDiv.textContent = '';
       ctx.clearRect(0, 0, 28, 28);
     }
@@ -139,14 +157,23 @@
 </head>
 <!-- <body onload="viewImage()"> -->
 <body onload="initCanvas()">
-  <div>
+  <div class="canvas-container">
     <canvas height="28" width="28"></canvas>
-    <span class="label"></span>
+    <div class="col">
+      <span>Neural network guess:</span>
+      <br>
+      <span class="guess"></span>
+    </div>
   </div>
   <div>
     <button onclick="clearCanvas()">clear</button>
-    <button onclick="processImage()">normalize image</button>
+    <button onclick="processImage()">pre-process image *</button>
     <button onclick="submit()">submit</button>
+    <div class="info">* Pre-processing centers the image by average pixel location & normalizes pixels
+      by setting values of 85 (33.3̅%) or less to 0 and greater than 85 to 255. Ideally it will also
+      scale to a 20x20 bounding box but I haven't implemented that yet. This is roughly the same
+      processing that was done on the training data.
+    </div>
   </div>
 </body>
 </html>

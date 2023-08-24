@@ -1,5 +1,5 @@
 const INPUT_SIZE = 28 * 28;
-const HIDDEN_LAYERS = [48, 32];
+const HIDDEN_LAYERS = [24, 16];
 const OUTPUTS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 const TRAIN_ROUNDS = 100;
