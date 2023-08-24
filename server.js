@@ -13,7 +13,7 @@ const MIME_TYPES = {
 };
 
 
-const n = new Network(p.INPUT_SIZE, p.NUM_LAYERS, p.NODES_PER_LAYER, p.OUTPUTS);
+const n = new Network(p.INPUT_SIZE, p.HIDDEN_LAYERS, p.OUTPUTS);
 n.loadParams().then(startServer);
 
 function startServer() {

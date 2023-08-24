@@ -5,19 +5,20 @@ const readline = require('readline');
 const sqlite3 = require('sqlite3');
 
 const EPOCHS = Math.floor(60000 / p.TRAIN_BATCH_SIZE);
-const n = new Network(p.INPUT_SIZE, p.NUM_LAYERS, p.NODES_PER_LAYER, p.OUTPUTS);
+const n = new Network(p.INPUT_SIZE, p.HIDDEN_LAYERS, p.OUTPUTS);
 
-n.loadParams().then(() => {
+// n.loadParams().then(() => {
   mnist.open();
   train();
   mnist.close();
-});
+// });
 
 function train() {
   for (let round = 0; round < p.TRAIN_ROUNDS; round++) {
+    const shuffledIndexes = shuffle(Array.from(Array(60000).keys()));
     for (let j = 0; j < EPOCHS; j++) {
       for (let i = 0; i < p.TRAIN_BATCH_SIZE; i++) {
-        const s = i + p.TRAIN_BATCH_SIZE * j;
+        const s = shuffledIndexes[i + p.TRAIN_BATCH_SIZE * j];
         const data = mnist.getTrainingImage(s);
         const label = mnist.getTrainingLabel(s);
         const correctOutput = Array(10).fill(0);
@@ -54,7 +55,7 @@ function train() {
 
 
   function storeNetwork() {
-    const db = new sqlite3.Database('./training_params.sqlite');
+    const db = new sqlite3.Database(p.DB_FILE);
     n.hiddenLayers.forEach((layer, layerIndex) => {
       layer.forEach(storeLayer(layerIndex));
     });
@@ -76,4 +77,14 @@ function train() {
     }
   }
 
+}
+
+// https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+// I haven't tested this personally but it's probably good
+function shuffle(/** @type Array<any> */array) {
+  for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
 }

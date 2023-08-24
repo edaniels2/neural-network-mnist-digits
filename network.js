@@ -103,17 +103,16 @@ class Network {
 
   constructor(
     /** @type number */numInputs,
-    /** @type number */numHiddenLayers,
-    /** @type number */neuronsPerLayer,
+    /** @type Array<number> */hiddenLayerCounts,
     /** @type Array<string | number> */outputLabels,
   ) {
     /** @type Array<InputNeuron> */
     this.inputLayer = Array(numInputs).fill(null).map(_k => new InputNeuron);
     /** @type Array<Array<Neuron>> */
-    this.hiddenLayers = Array(numHiddenLayers).fill(null);
-    for (let i = 0; i < numHiddenLayers; i++) {
+    this.hiddenLayers = Array(hiddenLayerCounts.length).fill(null);
+    for (let i = 0; i < hiddenLayerCounts.length; i++) {
       const previousLayer = i ? this.hiddenLayers[i - 1] : this.inputLayer;
-      this.hiddenLayers[i] = Array(neuronsPerLayer).fill(null).map(_k => new Neuron(previousLayer));
+      this.hiddenLayers[i] = Array(hiddenLayerCounts[i]).fill(null).map(_k => new Neuron(previousLayer));
     }
     /** @type Array<OutputNeuron> */
     this.outputLayer = Array(outputLabels.length).fill(null).map((_k, i) => new OutputNeuron(this.hiddenLayers.at(-1), outputLabels[i]));
@@ -121,7 +120,7 @@ class Network {
 
   loadParams() {
     /** @type sqlite3.Database */
-    const db = new sqlite3.Database('./training_params.sqlite');
+    const db = new sqlite3.Database(p.DB_FILE);
     // sqlite3 hijacks the `this` binding in the callback
     const self = this;
     return Promise.all([
@@ -182,9 +181,8 @@ class Network {
       this.evaluate(input);
     }
     return this.outputLayer.reduce((/** @type number */totalCost, output, i) => {
-      totalCost += Math.pow(output.activation - expected[i], 2);
-      return totalCost;
-    }, 0) / expected.length;
+      return totalCost + Math.pow(output.activation - expected[i], 2);
+    }, 0);
   }
 
   gradient(
@@ -197,11 +195,10 @@ class Network {
     this.outputLayer.forEach((node, i) => {
       node.dCost_dOut = 2 * (node.activation - correct[i]);
       node.dOut_dZ = activationFnDerivitive(node.z);
-      node.biasGradient += node.dCost_dOut * node.dOut_dZ / 10; // divide by 10 is only because gradient checking was consistently off by 10x, no idea why.
-      // There's probably something else wrong, especially considering I can't get over ~78% accuracy
+      node.biasGradient += node.dCost_dOut * node.dOut_dZ;
 
       node.inputs.forEach(input => {
-        input.weightGradient += input.neuron.activation * node.dCost_dOut * node.dOut_dZ / 10;
+        input.weightGradient += input.neuron.activation * node.dCost_dOut * node.dOut_dZ;
       });
     });
 
@@ -213,7 +210,7 @@ class Network {
           node.dCost_dOut += fwdConnection.neuron.dCost_dOut * fwdConnection.neuron.dOut_dZ * fwdConnection.weight;
         });
         node.dOut_dZ = activationFnDerivitive(node.z);
-        const partialBiasGradient = node.dCost_dOut * node.dOut_dZ / 10;
+        const partialBiasGradient = node.dCost_dOut * node.dOut_dZ;
         node.biasGradient += partialBiasGradient;
         node.inputs.forEach(input => {
           input.weightGradient += input.neuron.activation * partialBiasGradient;

@@ -2,11 +2,11 @@ const mnist = require('./mnist');
 const { Network } = require('./network');
 const p = require('./meta-parameters');
 
-const n = new Network(p.INPUT_SIZE, p.NUM_LAYERS, p.NODES_PER_LAYER, p.OUTPUTS);
+const n = new Network(p.INPUT_SIZE, p.HIDDEN_LAYERS, p.OUTPUTS);
 const NUM_SAMPLES = 5;
 
-n.loadParams().then(check);
-// check();
+// n.loadParams().then(check);
+check();
 
 function check() {
   mnist.open();
@@ -16,7 +16,7 @@ function check() {
   const diff = calc.map((cVal, i) => cVal - num[i]);
   // console.log(calc.slice(3000, 3010), num.slice(3000, 3010));
   for (let i = 0; i < calc.length; i++) {
-    if ((Math.abs(calc[i]) - Math.abs(num[i])) > (Math.abs(calc[i] / 100))) {
+    if (!((Math.abs(calc[i]) - Math.abs(num[i])) <= (Math.abs(calc[i] / 100)))) {
       console.log(i, calc[i], num[i]);
     }
   }
@@ -54,10 +54,15 @@ function numeric_gradient() {
   // const ptb = 1e-5;
   // const ptb2 = ptb * 2;
   const ptb = 3e-7;
-  const size = p.INPUT_SIZE * p.NODES_PER_LAYER // input weights
-    + Math.pow(p.NODES_PER_LAYER, p.NUM_LAYERS) // hidden layers weights
-    + p.NODES_PER_LAYER * p.NUM_LAYERS // hidden layers biases
-    + p.NODES_PER_LAYER * p.OUTPUTS.length // output layer weights
+  const size = p.INPUT_SIZE * p.HIDDEN_LAYERS[0] // input weights
+    + p.HIDDEN_LAYERS.reduce((numWeights, numNodes, i, layers) => {
+      if (!i) {
+        return numWeights;
+      }
+      return numWeights + numNodes * layers[i - 1];
+    }, 0) // hidden layers weights
+    + p.HIDDEN_LAYERS.reduce((numBiases, numNodes) => numBiases + numNodes, 0) // hidden layers biases
+    + p.HIDDEN_LAYERS.at(-1) * p.OUTPUTS.length // output layer weights
     + p.OUTPUTS.length; // output layer biases
   const g = Array(size).fill(0);
   for (let i = 0; i < NUM_SAMPLES; i++) {
@@ -75,6 +80,7 @@ function numeric_gradient() {
         node.inputs.forEach(input => {
           input.weight += ptb;
           const pCost = n.singleCost(correctOutput, data);
+          
           // input.weight -= ptb2;
           // const mCost = n.singleCost(correctOutput, data);
           // g[gIndex++] += (pCost - mCost) / ptb2;
@@ -85,6 +91,7 @@ function numeric_gradient() {
         });
         node.bias += ptb;
         const pCost = n.singleCost(correctOutput, data);
+
         // node.bias -= ptb2;
         // const mCost = n.singleCost(correctOutput, data);
         // g[gIndex++] += (pCost - mCost) / ptb2;
@@ -98,6 +105,7 @@ function numeric_gradient() {
       node.inputs.forEach(input => {
         input.weight += ptb;
         const pCost = n.singleCost(correctOutput, data);
+
         // input.weight -= ptb2;
         // const mCost = n.singleCost(correctOutput, data);
         // g[gIndex++] += (pCost - mCost) / ptb2;
@@ -108,6 +116,7 @@ function numeric_gradient() {
       });
       node.bias += ptb;
       const pCost = n.singleCost(correctOutput, data);
+
       // node.bias -= ptb2;
       // const mCost = n.singleCost(correctOutput, data);
       // g[gIndex++] += (pCost - mCost) / ptb;

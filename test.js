@@ -4,7 +4,7 @@ const p = require('./meta-parameters');
 
 const TEST_COUNT = 10000;
 
-const n = new Network(p.INPUT_SIZE, p.NUM_LAYERS, p.NODES_PER_LAYER, p.OUTPUTS);
+const n = new Network(p.INPUT_SIZE, p.HIDDEN_LAYERS, p.OUTPUTS);
 mnist.open();
 n.loadParams().then(() => {
   test();
