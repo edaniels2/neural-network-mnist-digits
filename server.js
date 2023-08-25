@@ -55,6 +55,34 @@ function startServer() {
       return;
     }
 
+    match = url.match(/\/weights\/(\d{1,2})/);
+    if (match) {
+      const neuronIndex = parseInt(match[1], 10);
+      if (!n.hiddenLayers[0][neuronIndex]) {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+      const rawData = n.hiddenLayers[0][neuronIndex].inputs.map(input => input.weight);
+      let maxMag = 0;
+      rawData.forEach(value => {
+        maxMag = Math.max(maxMag, Math.abs(value));
+      });
+      const scale = 255 / maxMag;
+      const normalized = [];
+      rawData.forEach(value => {
+        // each value will push 2 values to the data, representing positive and negative activation scaled to 255
+        const red = value > 0 ? Math.round(value * scale) : 0;
+        const blue = value < 0 ? Math.round(Math.abs(value) * scale) : 0;
+        normalized.push(red);
+        normalized.push(blue);
+      });
+      res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+      res.write(Buffer.from(normalized));
+      res.end();
+      return;
+    }
+
     if (req.method === 'POST' && url === '/evaluate') {
       req.on('data', (/** @type Buffer */data) => {
         const output = n.evaluate(data);

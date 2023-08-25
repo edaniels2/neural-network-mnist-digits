@@ -17,6 +17,14 @@
 
     div.col {
       flex-direction: column;
+
+      + div.col {
+        margin-left: 48px;
+      }
+    }
+    
+    .no-margin {
+      margin: 0 !important;
     }
 
     span.guess {
@@ -33,7 +41,7 @@
     /** @type CanvasRenderingContext2D */let ctx;
 
     function initCanvas() {
-      canvas = document.querySelector('canvas');
+      canvas = document.querySelector('canvas.draw');
       ctx = canvas.getContext('2d', { willReadFrequently: true });
       const { top, left } = canvas.getBoundingClientRect();
       canvas.onmousedown = startDraw;
@@ -153,26 +161,54 @@
         });
       });
     }
+
+    function getWeightMap() {
+      const n = document.querySelector('input#neuronIndex').value;
+      /** @type HTMLCanvasElement */const wCanvas = document.querySelector('canvas.weight-map');
+      const wCtx = wCanvas.getContext('2d');
+      fetch('/weights/'+n).then(response => response.arrayBuffer().then(buffer => new Uint8Array(buffer)).then(bytes => {
+        const imageData = new ImageData(28, 28);
+        // data is arranged in pairs for each neuron in the network i.e. [positive_activation_0, negative_activation_0, positive_activation_1, ...]
+        // it's not space efficient but it should convey more information. Mapping positive to red & negative to blue
+        for (let i = 0; i < bytes.length; i += 2) {
+          const red = bytes[i] * 1.5; // values are mostly low, just getting a little more saturation
+          const blue = bytes[i + 1] * 1.5;
+          imageData.data[i * 2] = red
+          imageData.data[i * 2 + 2] = blue;
+          imageData.data[i * 2 + 3] = 220;
+        }
+        wCtx.putImageData(imageData, 0, 0);
+      }));
+    }
   </script>
 </head>
 <!-- <body onload="viewImage()"> -->
 <body onload="initCanvas()">
   <div class="canvas-container">
-    <canvas height="28" width="28"></canvas>
+    <canvas class="draw" height="28" width="28"></canvas>
     <div class="col">
       <span>Neural network guess:</span>
       <br>
       <span class="guess"></span>
     </div>
+    <div class="col">
+      <canvas class="weight-map" height="28" width="28"></canvas>
+    </div>
+    <div class="col no-margin">
+      <p>View a heat map of the weights associated with a neuron</p>
+      <input id="neuronIndex" type="text" placeholder="Neuron index">
+      <button onclick="getWeightMap()">Get</button>
+    </div>
   </div>
+
   <div>
     <button onclick="clearCanvas()">clear</button>
     <button onclick="processImage()">pre-process image *</button>
     <button onclick="submit()">submit</button>
     <div class="info">* Pre-processing centers the image by average pixel location & normalizes pixels
       by setting values of 85 (33.3̅%) or less to 0 and greater than 85 to 255. Ideally it will also
-      scale to a 20x20 bounding box but I haven't implemented that yet. This is roughly the same
-      processing that was done on the training data.
+      scale to a 20x20 bounding box but I haven't implemented that yet. This generally produces a
+      better result but occasionally makes it worse.
     </div>
   </div>
 </body>

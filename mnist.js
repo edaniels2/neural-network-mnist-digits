@@ -24,12 +24,6 @@ function close() {
   fs.close(testLabelsFile);
 }
 
-function clone(/** @type Uint8Array */src)  {
-  var dst = new ArrayBuffer(src.length);
-  new Uint8Array(dst).set(new Uint8Array(src));
-  return dst;
-}
-
 function getTrainingImage(/** @type number */i) {
   fs.readSync(trainingImagesFile, readBuffer, 0, imageSize, imageHeaderOffset + i * imageSize);
   return new Uint8Array(readBuffer);

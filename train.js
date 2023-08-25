@@ -26,7 +26,7 @@ function train() {
         correctOutput[label] = 1;
         n.gradient(correctOutput, data);
       }
-      n.updateNetwork();
+      n.updateParams();
     }
   }
 

@@ -13,7 +13,7 @@ function activationFnDerivitive(/** @type number */value) {
 /**
  * Rectified Linear Units - sounds complicated but it's just f(x) = x for x>1 & f(x) = 0 otherwise
  */
-// haven't tested this one but it's supposed to be more effective for training
+// Training doesn't work at all using ReLU activation, probably another indication of a subtle bug
 function ReLU(/** @type number */value) {
   return Math.max(0, value);
 }
@@ -55,14 +55,17 @@ class Neuron {
 
   constructor(/** @type Array<Neuron|InputNeuron> */previousLayer) {
     /** @type Array<{neuron: Neuron, weight: number, weightGradient: number}> */
+    const bound = 1 / Math.sqrt(previousLayer.length);
+    const doubleBound = 2 * bound;
     this.inputs = previousLayer.map(neuron => {
-      const weight = Math.random() * 2 - 1;
+      const weight = Math.random() * doubleBound - bound;
       neuron.fwdConnections.push({ neuron: this, weight });
       return { neuron, weight, weightGradient: 0 };
     });
   }
 
   toString() {
+    // may be a better way to do this, but it filters out the circular references so it can be stringified
     return JSON.stringify((({fwdConnections, ...rest}) => rest)(this));
   }
 
@@ -77,8 +80,7 @@ class Neuron {
 
   updateActivation() {
     const value = this.inputs.reduce((sum, input) => {
-      sum += input.neuron.activation * input.weight;
-      return sum;
+      return sum + input.neuron.activation * input.weight;
     }, 0) + this.bias;
     this.z = value;
     this.activation = activationFn(value);
@@ -127,7 +129,7 @@ class Network {
       new Promise(resolve => db.all('SELECT * FROM weights', function (err, results) {
         err && console.log(err)
         results.forEach(row => {
-          const layer = row.layer >= self.hiddenLayers.length ? self.outputLayer : self.hiddenLayers[row.layer];
+          const layer = row.layer === self.hiddenLayers.length ? self.outputLayer : self.hiddenLayers[row.layer];
           layer[row.node].inputs[row.input].weight = row.value;
         });
         console.log('weights loaded');
@@ -136,7 +138,7 @@ class Network {
       new Promise(resolve => db.all('SELECT * FROM biases', function (err, results) {
         err && console.log(err)
         results.forEach(row => {
-          const layer = row.layer >= self.hiddenLayers.length ? self.outputLayer : self.hiddenLayers[row.layer];
+          const layer = row.layer === self.hiddenLayers.length ? self.outputLayer : self.hiddenLayers[row.layer];
           layer[row.node].bias = row.value;
         });
         console.log('biases loaded');
@@ -219,7 +221,7 @@ class Network {
     }
   }
 
-  updateNetwork() {
+  updateParams() {
     const cost = this.currentTotalCost / this.sampleCount;
     this.hiddenLayers.forEach(layer => {
       layer.forEach(updateNeuron);
@@ -237,6 +239,22 @@ class Network {
         input.weight -= cost * p.LEARN_RATE * input.weightGradient;
         input.weightGradient = 0;
       });
+    }
+  }
+
+  reset() {
+    this.hiddenLayers.forEach(layer => {
+      layer.forEach(resetNeuron);
+    });
+    this.outputLayer.forEach(resetNeuron);
+
+    function resetNeuron(/** @type Neuron */neuron) {
+      neuron.activation = 0;
+      neuron.biasGradient = 0;
+      neuron.dCost_dOut = 0;
+      neuron.dOut_dZ = 0;
+      neuron.z = 0;
+      neuron.inputs.forEach(input => input.weightGradient = 0);
     }
   }
 }
