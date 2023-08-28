@@ -58,7 +58,8 @@ class Neuron {
     const bound = 1 / Math.sqrt(previousLayer.length);
     const doubleBound = 2 * bound;
     this.inputs = previousLayer.map(neuron => {
-      const weight = Math.random() * doubleBound - bound;
+      // make weight a shared object between input & fwdConnection - essentially we want a pointer to the weight
+      const weight = { value: Math.random() * doubleBound - bound };
       neuron.fwdConnections.push({ neuron: this, weight });
       return { neuron, weight, weightGradient: 0 };
     });
@@ -69,18 +70,9 @@ class Neuron {
     return JSON.stringify((({fwdConnections, ...rest}) => rest)(this));
   }
 
-  updateWeights(/** @type Array<number> */weights) {
-    if (weights.length !== this.inputs.length) {
-      throw new Error('Number of weights does not match previous layer size');
-    }
-    this.inputs.forEach((connection, i) => {
-      connection.weight[i] = weights[i];
-    });
-  }
-
   updateActivation() {
     const value = this.inputs.reduce((sum, input) => {
-      return sum + input.neuron.activation * input.weight;
+      return sum + input.neuron.activation * input.weight.value;
     }, 0) + this.bias;
     this.z = value;
     this.activation = activationFn(value);
@@ -130,7 +122,7 @@ class Network {
         err && console.log(err)
         results.forEach(row => {
           const layer = row.layer === self.hiddenLayers.length ? self.outputLayer : self.hiddenLayers[row.layer];
-          layer[row.node].inputs[row.input].weight = row.value;
+          layer[row.node].inputs[row.input].weight.value = row.value;
         });
         console.log('weights loaded');
         resolve();
@@ -209,7 +201,7 @@ class Network {
       layer.forEach(node => {
         node.dCost_dOut = 0;
         node.fwdConnections.forEach(fwdConnection => {
-          node.dCost_dOut += fwdConnection.neuron.dCost_dOut * fwdConnection.neuron.dOut_dZ * fwdConnection.weight;
+          node.dCost_dOut += fwdConnection.neuron.dCost_dOut * fwdConnection.neuron.dOut_dZ * fwdConnection.weight.value;
         });
         node.dOut_dZ = activationFnDerivitive(node.z);
         const partialBiasGradient = node.dCost_dOut * node.dOut_dZ;
@@ -223,6 +215,7 @@ class Network {
 
   updateParams() {
     const cost = this.currentTotalCost / this.sampleCount;
+    const coefficient = cost * p.LEARN_RATE;
     this.hiddenLayers.forEach(layer => {
       layer.forEach(updateNeuron);
     });
@@ -233,12 +226,16 @@ class Network {
     this.sampleCount = 0;
 
     function updateNeuron(/** @type Neuron */neuron) {
-      neuron.bias -= cost * p.LEARN_RATE * neuron.biasGradient;
-      neuron.biasGradient = 0;
       neuron.inputs.forEach(input => {
-        input.weight -= cost * p.LEARN_RATE * input.weightGradient;
+        input.weight.value -= coefficient * input.weightGradient;
         input.weightGradient = 0;
       });
+      neuron.bias -= coefficient * neuron.biasGradient;
+      neuron.activation = 0;
+      neuron.biasGradient = 0;
+      neuron.dCost_dOut = 0;
+      neuron.dOut_dZ = 0;
+      neuron.z = 0;
     }
   }
 
@@ -247,6 +244,8 @@ class Network {
       layer.forEach(resetNeuron);
     });
     this.outputLayer.forEach(resetNeuron);
+    this.currentTotalCost = 0;
+    this.sampleCount = 0;
 
     function resetNeuron(/** @type Neuron */neuron) {
       neuron.activation = 0;

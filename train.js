@@ -4,7 +4,7 @@ const p = require('./meta-parameters');
 const readline = require('readline');
 const sqlite3 = require('sqlite3');
 
-const EPOCHS = Math.floor(60000 / p.TRAIN_BATCH_SIZE);
+const BATCHES = Math.floor(p.TOTAL_TRAINING_SAMPLES / p.TRAIN_BATCH_SIZE);
 const n = new Network(p.INPUT_SIZE, p.HIDDEN_LAYERS, p.OUTPUTS);
 
 // trying to resume training on existing parameters always seems to increase the error rate, probably a bug somewhere
@@ -16,13 +16,13 @@ const n = new Network(p.INPUT_SIZE, p.HIDDEN_LAYERS, p.OUTPUTS);
 
 function train() {
   for (let round = 0; round < p.TRAIN_ROUNDS; round++) {
-    const shuffledIndexes = shuffle(Array.from(Array(60000).keys()));
-    for (let j = 0; j < EPOCHS; j++) {
+    const shuffledIndexes = shuffle(Array.from(Array(p.TOTAL_TRAINING_SAMPLES).keys()));
+    for (let j = 0; j < BATCHES; j++) {
       for (let i = 0; i < p.TRAIN_BATCH_SIZE; i++) {
         const s = shuffledIndexes[i + p.TRAIN_BATCH_SIZE * j];
         const data = mnist.getTrainingImage(s);
         const label = mnist.getTrainingLabel(s);
-        const correctOutput = Array(10).fill(0);
+        const correctOutput = Array(n.outputLayer.length).fill(0);
         correctOutput[label] = 1;
         n.gradient(correctOutput, data);
       }
@@ -31,7 +31,7 @@ function train() {
   }
 
   let correctCount = 0;
-  const testCount = 10000;
+  const testCount = p.TOTAL_TEST_SAMPLES;
   for (let i = 0; i < testCount; i++) {
     const data = mnist.getTestImage(i);
     const label = mnist.getTestLabel(i);
@@ -71,7 +71,7 @@ function train() {
         db.parallelize(() => {
           db.run(`INSERT INTO biases (layer, node, value) VALUES (${layerIndex}, ${neuronIndex}, ${neuron.bias}) ON CONFLICT(layer, node) DO UPDATE SET value=${neuron.bias}`);
           neuron.inputs.forEach((input, inputIndex) => {
-            db.run(`INSERT INTO weights (layer, node, input, value) VALUES (${layerIndex}, ${neuronIndex}, ${inputIndex}, ${input.weight}) ON CONFLICT(layer, node, input) DO UPDATE SET value=${input.weight}`);
+            db.run(`INSERT INTO weights (layer, node, input, value) VALUES (${layerIndex}, ${neuronIndex}, ${inputIndex}, ${input.weight.value}) ON CONFLICT(layer, node, input) DO UPDATE SET value=${input.weight.value}`);
           });
         });
       };

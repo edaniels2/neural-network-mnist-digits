@@ -63,7 +63,7 @@ function startServer() {
         res.end();
         return;
       }
-      const rawData = n.hiddenLayers[0][neuronIndex].inputs.map(input => input.weight);
+      const rawData = n.hiddenLayers[0][neuronIndex].inputs.map(input => input.weight.value);
       let maxMag = 0;
       rawData.forEach(value => {
         maxMag = Math.max(maxMag, Math.abs(value));
