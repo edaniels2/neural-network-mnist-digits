@@ -7,12 +7,11 @@ const sqlite3 = require('sqlite3');
 const BATCHES = Math.floor(p.TOTAL_TRAINING_SAMPLES / p.TRAIN_BATCH_SIZE);
 const n = new Network(p.INPUT_SIZE, p.HIDDEN_LAYERS, p.OUTPUTS);
 
-// trying to resume training on existing parameters always seems to increase the error rate, probably a bug somewhere
-// n.loadParams().then(() => {
+n.loadParams().then(() => {
   mnist.open();
   train();
   mnist.close();
-// });
+});
 
 function train() {
   for (let round = 0; round < p.TRAIN_ROUNDS; round++) {
