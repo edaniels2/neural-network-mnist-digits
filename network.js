@@ -113,30 +113,38 @@ class Network {
   }
 
   loadParams() {
-    /** @type sqlite3.Database */
-    const db = new sqlite3.Database(p.DB_FILE);
-    // sqlite3 hijacks the `this` binding in the callback
-    const self = this;
+    /** @type sqlite3.Database */ let db;
+    const self = this; // sqlite3 hijacks `this` binding in query callbacks
     return Promise.all([
-      new Promise(resolve => db.all('SELECT * FROM weights', function (err, results) {
-        err && console.log(err)
+      new Promise((resolve, reject) => {
+        db = new sqlite3.Database(p.DB_FILE, sqlite3.OPEN_READONLY, err => {
+          err ? reject() : resolve();
+        });
+      }),
+      new Promise((resolve, reject) => db.all('SELECT * FROM weights', function (err, results) {
+        if (err) {
+          return reject(err);
+        }
         results.forEach(row => {
           const layer = row.layer === self.hiddenLayers.length ? self.outputLayer : self.hiddenLayers[row.layer];
           layer[row.node].inputs[row.input].weight.value = row.value;
         });
-        console.log('weights loaded');
         resolve();
       })),
-      new Promise(resolve => db.all('SELECT * FROM biases', function (err, results) {
-        err && console.log(err)
+      new Promise((resolve, reject) => db.all('SELECT * FROM biases', function (err, results) {
+        if (err) {
+          return reject(err);
+        }
         results.forEach(row => {
           const layer = row.layer === self.hiddenLayers.length ? self.outputLayer : self.hiddenLayers[row.layer];
           layer[row.node].bias = row.value;
         });
-        console.log('biases loaded');
         resolve();
       }))
-    ]).then(() => db.close());
+    ]).then(
+        () => console.log('Network parameters loaded'),
+        _err => console.log('No trained parameters for current configuration')
+      ).finally(() => db.close());
   }
 
   evaluate(/** @type Array<number> */data, /** @type Array<number> */expected) {
