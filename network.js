@@ -266,4 +266,4 @@ class Network {
   }
 }
 
-module.exports = { Network };
+module.exports = Network;

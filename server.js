@@ -1,9 +1,9 @@
 const fs = require('fs');
 const http = require('http');
 const mnist = require('./mnist');
+const Network = require('./network');
 const p = require('./meta-parameters');
 const path = require('path');
-const { Network } = require('./network');
 
 const PORT = 1234;
 const BASE_PATH = process.cwd();
