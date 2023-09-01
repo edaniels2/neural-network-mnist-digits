@@ -1,5 +1,5 @@
 const mnist = require('./mnist');
-const { Network } = require('./network');
+const Network = require('./network');
 const p = require('./meta-parameters');
 
 const n = new Network(p.INPUT_SIZE, p.HIDDEN_LAYERS, p.OUTPUTS);
